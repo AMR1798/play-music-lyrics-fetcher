@@ -1,51 +1,51 @@
 function getDOMArtist(){
-    return parseInfo(getDOMArtistTrackElement().text()).artist.trim();
+   return parseInfo(getDOMArtistTrackElement().text()).artist.trim();
 }
 
 function getDOMTrack(){
-    return parseInfo(getDOMArtistTrackElement().text()).track.trim();
+   return parseInfo(getDOMArtistTrackElement().text()).track.trim();
 }
 
 function getDOMAlbum(){
-    return 'Unknown';
+   return 'Unknown';
 }
 
 function isDOMTrackAvailable(){
-  return getDOMArtistTrackElement().length;
+ return getDOMArtistTrackElement().length;
 }
 
 function getDOMTrackPosition(){
-    var trackPosition = -1;
-    try{
-      trackPosition = Math.round($("video.video-stream.html5-main-video:eq(0)")["0"]["currentTime"]);
-      if(!trackPosition){
-         trackPosition = hmsToSecondsOnly(getDOMTimeElapsedElement().text(), ':');
-      }
-    } catch (err){}
-    return trackPosition
+   var trackPosition = -1;
+   try{
+     trackPosition = Math.round($("video.video-stream.html5-main-video:eq(0)")["0"]["currentTime"]);
+     if(!trackPosition){
+        trackPosition = hmsToSecondsOnly(getDOMTimeElapsedElement().text(), ':');
+     }
+   } catch (err){}
+   return trackPosition
 }
 
 function getDOMTrackDuration(){
-    var trackLength = -1;
-    try{
-      trackLength = Math.round($("video.video-stream.html5-main-video:eq(0)")["0"]["duration"]);
-    	if(!trackLength){
-         trackLength = hmsToSecondsOnly($(".ytp-time-duration:eq(0)").text(), ':');
-      }
-    } catch(err){}
-    return trackLength;
+   var trackLength = -1;
+   try{
+     trackLength = Math.round($("video.video-stream.html5-main-video:eq(0)")["0"]["duration"]);
+      if(!trackLength){
+        trackLength = hmsToSecondsOnly($(".ytp-time-duration:eq(0)").text(), ':');
+     }
+   } catch(err){}
+   return trackLength;
 }
 
 function getDOMTimeElapsedElement(){
-   return $(".ytp-time-current:eq(0)");
+  return $(".ytp-time-current:eq(0)");
 }
 
 function getDOMArtistTrackElement(){
-  if($("#eow-title").length){
-    return $("#eow-title");
-  } else if($("h1.title").length){// new layout
-    return $("h1.title");
-  }
+ if($("#eow-title").length){
+   return $("#eow-title");
+ } else if($("h1.title").length){// new layout
+   return $("h1.title");
+ }
 
 }
 
@@ -60,69 +60,89 @@ https://github.com/david-sabata/web-scrobbler
 */
 
 /**
- * Parse given string into artist and track, assume common order Art - Ttl
- * @return {artist, track}
- */
+* Parse given string into artist and track, assume common order Art - Ttl
+* @return {artist, track}
+*/
 function parseInfo(artistTitle) {
-   var artist = '';
-   var track = '';
+  var artist = '';
+  var track = '';
 
-   var separator = findSeparator(artistTitle);
-   if (separator == null)
-      return { artist: '', track: '' };
+  var separator = findSeparator(artistTitle);
+  if (separator == null){
+     return getTrackAndArtist();
+  }else{
+     artist = artistTitle.substr(0, separator.index);
+     track = artistTitle.substr(separator.index + separator.length);
 
-   artist = artistTitle.substr(0, separator.index);
-   track = artistTitle.substr(separator.index + separator.length);
+     return cleanArtistTrack(artist, track);
+  }
+}
 
-   return cleanArtistTrack(artist, track);
+//for new kind of youtube music (track in title and artist in channel name)
+function getTrackAndArtist(){
+  var track = '';
+  var artist = '';
+  if ($("h1.title"))
+     track = $("h1.title yt-formatted-string").text();
+  if ($("div.ytd-channel-name"))
+     artist = $("yt-formatted-string.ytd-channel-name").first().text();
+  // console.log("track : "+track+" artist: "+artist);
+  // console.log('log 1: -------');
+  // console.log('log 2: ' + track);
+  // console.log('log 3: ' + typeof track);
+  // console.log('log 1: -------');
+  // console.log('log 2: ' + artist);
+  // console.log('log 3: ' + typeof artist);
+  return {artist: artist, track: track};
+
 }
 
 function findSeparator(str) {
-   // care - minus vs hyphen
-   var separators = [' - ', ' – ', '-', '–', ':'];
+  // care - minus vs hyphen
+  var separators = [' - ', ' – ', '-', '–', ':'];
 
-   for (i in separators) {
-      var sep = separators[i];
-      var index = str.indexOf(sep);
-      if (index > -1)
-         return { index: index, length: sep.length };
-   }
+  for (i in separators) {
+     var sep = separators[i];
+     var index = str.indexOf(sep);
+     if (index > -1)
+        return { index: index, length: sep.length };
+  }
 
-   return null;
+  return null;
 }
 
 /**
- * Clean non-informative garbage from title
- */
+* Clean non-informative garbage from title
+*/
 function cleanArtistTrack(artist, track) {
 
-   // Do some cleanup
-   artist = artist.replace(/^\s+|\s+$/g,'');
-   track = track.replace(/^\s+|\s+$/g,'');
+  // Do some cleanup
+  artist = String(artist).replace(/^\s+|\s+$/g,'');
+  track = String(track).replace(/^\s+|\s+$/g,'');
 
-   // Strip crap
-   track = track.replace(/\s*\*+\s?\S+\s?\*+$/, ''); // **NEW**
-   track = track.replace(/\s*\[[^\]]+\]$/, ''); // [whatever]
-   track = track.replace(/\s*\([^\)]*version\)$/i, ''); // (whatever version)
-   track = track.replace(/\s*\.(avi|wmv|mpg|mpeg|flv)$/i, ''); // video extensions
-   track = track.replace(/\s*(LYRIC VIDEO\s*)?(lyric video\s*)/i, ''); // (LYRIC VIDEO)
-   track = track.replace(/\s*(Official Track Stream*)/i, ''); // (Official Track Stream)
-   track = track.replace(/\s*(of+icial\s*)?(music\s*)?video/i, ''); // (official)? (music)? video
-   track = track.replace(/\s*(of+icial\s*)?(music\s*)?audio/i, ''); // (official)? (music)? audio
-   track = track.replace(/\s*(ALBUM TRACK\s*)?(album track\s*)/i, ''); // (ALBUM TRACK)
-   track = track.replace(/\s*(COVER ART\s*)?(Cover Art\s*)/i, ''); // (Cover Art)
-   track = track.replace(/\s*\(\s*of+icial\s*\)/i, ''); // (official)
-   track = track.replace(/\s*\(\s*[0-9]{4}\s*\)/i, ''); // (1999)
-   track = track.replace(/\s+\(\s*(HD|HQ)\s*\)$/, ''); // HD (HQ)
-   track = track.replace(/\s+(HD|HQ)\s*$/, ''); // HD (HQ)
-   track = track.replace(/\s*video\s*clip/i, ''); // video clip
-   track = track.replace(/\s+\(?live\)?$/i, ''); // live
-   track = track.replace(/\(+\s*\)+/, ''); // Leftovers after e.g. (official video)
-   track = track.replace(/^(|.*\s)"(.*)"(\s.*|)$/, '$2'); // Artist - The new "Track title" featuring someone
-   track = track.replace(/^(|.*\s)'(.*)'(\s.*|)$/, '$2'); // 'Track title'
-   track = track.replace(/^[\/\s,:;~-\s"]+/, ''); // trim starting white chars and dash
-   track = track.replace(/[\/\s,:;~-\s"\s!]+$/, ''); // trim trailing white chars and dash
-   //" and ! added because some track names end as {"Some Track" Official Music Video!} and it becomes {"Some Track"!} example: http://www.youtube.com/watch?v=xj_mHi7zeRQ
+  // Strip crap
+  track = track.replace(/\s*\*+\s?\S+\s?\*+$/, ''); // **NEW**
+  track = track.replace(/\s*\[[^\]]+\]$/, ''); // [whatever]
+  track = track.replace(/\s*\([^\)]*version\)$/i, ''); // (whatever version)
+  track = track.replace(/\s*\.(avi|wmv|mpg|mpeg|flv)$/i, ''); // video extensions
+  track = track.replace(/\s*(LYRIC VIDEO\s*)?(lyric video\s*)/i, ''); // (LYRIC VIDEO)
+  track = track.replace(/\s*(Official Track Stream*)/i, ''); // (Official Track Stream)
+  track = track.replace(/\s*(of+icial\s*)?(music\s*)?video/i, ''); // (official)? (music)? video
+  track = track.replace(/\s*(of+icial\s*)?(music\s*)?audio/i, ''); // (official)? (music)? audio
+  track = track.replace(/\s*(ALBUM TRACK\s*)?(album track\s*)/i, ''); // (ALBUM TRACK)
+  track = track.replace(/\s*(COVER ART\s*)?(Cover Art\s*)/i, ''); // (Cover Art)
+  track = track.replace(/\s*\(\s*of+icial\s*\)/i, ''); // (official)
+  track = track.replace(/\s*\(\s*[0-9]{4}\s*\)/i, ''); // (1999)
+  track = track.replace(/\s+\(\s*(HD|HQ)\s*\)$/, ''); // HD (HQ)
+  track = track.replace(/\s+(HD|HQ)\s*$/, ''); // HD (HQ)
+  track = track.replace(/\s*video\s*clip/i, ''); // video clip
+  track = track.replace(/\s+\(?live\)?$/i, ''); // live
+  track = track.replace(/\(+\s*\)+/, ''); // Leftovers after e.g. (official video)
+  track = track.replace(/^(|.*\s)"(.*)"(\s.*|)$/, '$2'); // Artist - The new "Track title" featuring someone
+  track = track.replace(/^(|.*\s)'(.*)'(\s.*|)$/, '$2'); // 'Track title'
+  track = track.replace(/^[\/\s,:;~-\s"]+/, ''); // trim starting white chars and dash
+  track = track.replace(/[\/\s,:;~-\s"\s!]+$/, ''); // trim trailing white chars and dash
+  //" and ! added because some track names end as {"Some Track" Official Music Video!} and it becomes {"Some Track"!} example: http://www.youtube.com/watch?v=xj_mHi7zeRQ
 
-   return {artist: artist, track: track};
+  return {artist: artist, track: track};
 }
